@@ -1568,7 +1568,11 @@ async function performSyncInner(engine: BrainEngine, opts: SyncOpts): Promise<Sy
   // means the pool is genuinely dead. Nothing is imported yet, so we abort
   // cleanly (zero loss) rather than draining work we could never anchor — see
   // the !pinPersisted gate just after the partial() closure below.
-  const pinPersisted = await recordCompleted(engine, ckpt.target, [pin]);
+  // The sync target is append-only for the lifetime of this checkpoint, just
+  // like completed paths. Store it in op_checkpoint_paths instead of the legacy
+  // JSONB parent column; this avoids driver-specific JSON string double-encoding
+  // and loadOpCheckpoint already unions both stores.
+  const pinPersisted = await appendCompleted(engine, ckpt.target, [pin]);
 
   // v0.42.x (#1794): durable, race-safe, bankable checkpoint state.
   //  - `completed`: the cross-run skip set (seeded from the resume load).
